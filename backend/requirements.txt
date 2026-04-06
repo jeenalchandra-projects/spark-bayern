@@ -1,0 +1,34 @@
+# =============================================================================
+# backend/requirements.txt — All dependencies for the consolidated backend
+# =============================================================================
+# This single service replaces:
+#   api-gateway    (FastAPI routing, auth, GDPR audit)
+#   quality-service (PDF analysis)
+#   rag-service    (Bayern BayBO vector search + LLM)
+#   translation-service (multilingual output)
+# =============================================================================
+
+# --- Web framework ---
+fastapi==0.115.5
+uvicorn==0.32.1
+python-dotenv==1.0.1
+python-multipart==0.0.19
+pydantic==2.10.3
+pydantic-settings==2.7.0
+
+# --- HTTP client (for calling external APIs) ---
+httpx==0.28.0
+
+# --- PDF analysis (quality scorer — no AI needed) ---
+pdfplumber==0.11.4
+pypdf==5.1.0
+Pillow==11.0.0
+
+# --- AI / LLM (OpenAI-compatible client for Requesty) ---
+openai==1.58.1
+
+# --- Vector database for RAG (in-memory, no separate server) ---
+chromadb==0.5.20
+
+# --- Token counting ---
+tiktoken==0.8.0

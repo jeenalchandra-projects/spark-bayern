@@ -1,48 +1,51 @@
 # =============================================================================
-# Dockerfile — Frontend (two-stage build)
+# Dockerfile — Frontend (runtime-configurable API URL)
 # =============================================================================
-# WHAT IS A TWO-STAGE BUILD?
-# Stage 1 (builder): Has Node.js installed. Runs "npm run build" which compiles
-#   our React code into static HTML/CSS/JS files in the "dist" folder.
-# Stage 2 (final): Has only Nginx (a lightweight web server). Copies the
-#   compiled files from Stage 1. No Node.js in the final image — smaller and safer.
+# THE PROBLEM WE'RE SOLVING:
+# React apps built with Vite bake environment variables into the JavaScript
+# at build time. This means we'd need to know the API Gateway URL BEFORE
+# building the Docker image — a chicken-and-egg problem on Railway.
 #
-# WHY THIS IS BETTER:
-# The final Docker image doesn't contain Node.js, npm, or any build tools.
-# It's just a minimal web server serving static files. Smaller = faster = safer.
+# THE SOLUTION — Runtime configuration via nginx:
+# Stage 1: Build React with a PLACEHOLDER for the API URL
+# Stage 2: Nginx serves a tiny config.js file that sets window.SPARK_API_URL
+#          at RUNTIME using an environment variable injected by Railway.
+#          The React app reads this window variable first, then falls back
+#          to the build-time value.
+#
+# This way: build once, configure at runtime. The same Docker image works
+# for local development AND Railway deployment — just set the env var.
 # =============================================================================
 
-# --- Stage 1: Build ---
+# --- Stage 1: Build React app ---
 FROM node:20-slim AS builder
 WORKDIR /app
-
-# Copy package files first (for Docker layer caching)
 COPY package*.json ./
 RUN npm ci --silent
-
-# Accept build argument for the API URL
-ARG VITE_API_URL=http://localhost:8000
-ENV VITE_API_URL=$VITE_API_URL
-
-# Copy source and build
 COPY . .
+
+# Build with a placeholder — the real URL is injected at runtime
+ENV VITE_API_URL=__RUNTIME_API_URL__
 RUN npm run build
 
-# --- Stage 2: Serve ---
+# --- Stage 2: Runtime nginx server ---
 FROM nginx:alpine
 
-# Copy built files from Stage 1
+# Install envsubst (part of gettext) — replaces ${VARIABLE} in files
+# This is what allows runtime env var injection
+RUN apk add --no-cache gettext
+
+# Copy built React files
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Custom nginx config for single-page app (handles React Router if added later)
-RUN echo 'server { \
-    listen 80; \
-    root /usr/share/nginx/html; \
-    index index.html; \
-    location / { try_files $uri $uri/ /index.html; } \
-    gzip on; \
-    gzip_types text/plain text/css application/json application/javascript; \
-}' > /etc/nginx/conf.d/default.conf
+# Copy our nginx config template
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy the runtime config script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+
+# Use our entrypoint script (injects env vars, then starts nginx)
+CMD ["/docker-entrypoint.sh"]

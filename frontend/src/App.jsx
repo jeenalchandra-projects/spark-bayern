@@ -6,10 +6,14 @@ import UploadScreen from "./components/UploadScreen";
 import ResultsScreen from "./components/ResultsScreen";
 import "./App.css";
 
-// The API Gateway URL.
-// In development (local): points to localhost:8000
-// In production (Railway): set via VITE_API_URL environment variable
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+// The API Gateway URL — resolved in this priority order:
+// 1. window.SPARK_CONFIG.apiUrl  → set by docker-entrypoint.sh at runtime (Railway)
+// 2. import.meta.env.VITE_API_URL → set at build time (local dev fallback)
+// 3. "http://localhost:8000"      → hardcoded fallback for development
+const API_BASE_URL =
+  window?.SPARK_CONFIG?.apiUrl ||
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:8000";
 
 function App() {
   // -------------------------------------------------------------------------

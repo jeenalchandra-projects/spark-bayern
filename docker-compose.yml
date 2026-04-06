@@ -1,154 +1,38 @@
-# =============================================================================
-# docker-compose.yml — Run the entire SPARK-Bayern system locally
-# =============================================================================
-# WHAT DOCKER COMPOSE DOES:
-# Docker Compose is a tool that starts multiple Docker containers together.
-# Instead of running 4 "docker run" commands in 4 terminals, you run ONE command:
-#   docker compose up
-# And all services start, connect to each other, and are ready.
-#
-# HOW TO USE:
-# 1. Copy .env.example to .env and fill in your values
-# 2. Run: docker compose up --build
-# 3. Open: http://localhost:3000 for the frontend
-#          http://localhost:8000/docs for the API Gateway (Swagger UI)
-#
-# WHAT "NETWORKS" ARE:
-# In Docker, services need to be on the same network to talk to each other.
-# We create one network called "spark-net". All services join it.
-# Inside this network, services find each other by name (e.g., "quality-service:8001").
-#
-# WHAT "VOLUMES" ARE:
-# Volumes persist data between container restarts.
-# We use one volume for the RAG service's model cache.
-# =============================================================================
-
 services:
 
-  # ---------------------------------------------------------------------------
-  # API GATEWAY — central router, port 8000
-  # ---------------------------------------------------------------------------
-  api-gateway:
+  backend:
     build:
-      context: ./api-gateway
+      context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"    # Maps your Mac's port 8000 to the container's port 8000
+      - "8000:8000"
     env_file:
-      - .env           # Load all variables from your .env file
-    environment:
-      # Override service URLs to use Docker service names (not localhost)
-      QUALITY_SERVICE_URL: http://quality-service:8001
-      RAG_SERVICE_URL: http://rag-service:8002
-      TRANSLATION_SERVICE_URL: http://translation-service:8003
-    depends_on:
-      # Wait for these services to be healthy before starting the gateway
-      quality-service:
-        condition: service_healthy
-      rag-service:
-        condition: service_healthy
-      translation-service:
-        condition: service_healthy
+      - .env
     networks:
       - spark-net
-    restart: unless-stopped    # Auto-restart if it crashes
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # ---------------------------------------------------------------------------
-  # QUALITY SERVICE — PDF scorer, port 8001
-  # ---------------------------------------------------------------------------
-  quality-service:
-    build:
-      context: ./quality-service
-      dockerfile: Dockerfile
-    ports:
-      - "8001:8001"
-    networks:
-      - spark-net
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # ---------------------------------------------------------------------------
-  # RAG SERVICE — Bayern law analysis, port 8002
-  # ---------------------------------------------------------------------------
-  rag-service:
-    build:
-      context: ./rag-service
-      dockerfile: Dockerfile
-    ports:
-      - "8002:8002"
-    env_file:
-      - .env
-    volumes:
-      # Cache the sentence transformer model so it's not re-downloaded on every restart
-      - rag-model-cache:/root/.cache
-    networks:
-      - spark-net
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
-      interval: 60s    # RAG takes longer to start (loads the vector store)
-      timeout: 30s
+      timeout: 15s
       retries: 5
-      start_period: 60s
+      start_period: 60s  # ChromaDB needs ~30s to initialise on first start
 
-  # ---------------------------------------------------------------------------
-  # TRANSLATION SERVICE — multilingual output, port 8003
-  # ---------------------------------------------------------------------------
-  translation-service:
-    build:
-      context: ./translation-service
-      dockerfile: Dockerfile
-    ports:
-      - "8003:8003"
-    env_file:
-      - .env
-    networks:
-      - spark-net
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # ---------------------------------------------------------------------------
-  # FRONTEND — React dashboard, port 3000
-  # ---------------------------------------------------------------------------
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        # This tells the React app where to find the API Gateway
-        # When running locally, it's on localhost:8000
-        VITE_API_URL: http://localhost:8000
     ports:
-      - "3000:80"    # Map Mac port 3000 to nginx port 80 inside container
+      - "3000:80"
+    environment:
+      API_URL: http://localhost:8000   # override with Railway URL in production
     depends_on:
-      - api-gateway
+      backend:
+        condition: service_healthy
     networks:
       - spark-net
     restart: unless-stopped
 
-# =============================================================================
-# NETWORKS
-# =============================================================================
 networks:
   spark-net:
-    driver: bridge    # Standard Docker networking mode
-
-# =============================================================================
-# VOLUMES
-# =============================================================================
-volumes:
-  rag-model-cache:
-    driver: local
+    driver: bridge
