@@ -1,0 +1,17 @@
+# Quality Service dependencies
+
+# FastAPI + server
+fastapi==0.115.5
+uvicorn==0.32.1
+python-dotenv==1.0.1
+python-multipart==0.0.19
+
+# pdfplumber — extracts text and metadata from PDFs without an AI model
+# It can tell us: how many pages, is text extractable, image resolution, etc.
+pdfplumber==0.11.4
+
+# pypdf — additional PDF parsing and metadata extraction
+pypdf==5.1.0
+
+# Pillow — image processing library, used to check image quality in scanned PDFs
+Pillow==11.0.0

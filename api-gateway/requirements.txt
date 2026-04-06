@@ -1,0 +1,28 @@
+# =============================================================================
+# API GATEWAY — PYTHON DEPENDENCIES
+# =============================================================================
+# These are the Python libraries this service needs.
+# Install them with: pip install -r requirements.txt
+# =============================================================================
+
+# FastAPI — the web framework that handles incoming HTTP requests
+# Think of it like a receptionist that receives calls and routes them
+fastapi==0.115.5
+
+# Uvicorn — the server that actually runs FastAPI
+# FastAPI writes the logic; Uvicorn is the engine that starts it
+uvicorn==0.32.1
+
+# Python-dotenv — reads your .env file and makes variables available in code
+python-dotenv==1.0.1
+
+# HTTPX — makes HTTP requests to other services (quality, RAG, translation)
+# Like a phone that this service uses to call the other services
+httpx==0.28.0
+
+# Python-multipart — needed to handle file uploads (PDF files sent via the browser)
+python-multipart==0.0.19
+
+# Pydantic — validates and structures data, ensures inputs are the right type
+# Built into FastAPI, but listed here for explicit version control
+pydantic==2.10.3

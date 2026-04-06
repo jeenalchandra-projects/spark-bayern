@@ -1,0 +1,37 @@
+# =============================================================================
+# railway.toml — Railway deployment configuration
+# =============================================================================
+# WHAT RAILWAY IS:
+# Railway is a cloud hosting platform. It reads this file to understand
+# how to build and run your application.
+#
+# HOW RAILWAY DEPLOYMENT WORKS:
+# 1. You push your code to GitHub
+# 2. Railway detects the push and reads this file
+# 3. Railway builds Docker containers for each service
+# 4. Railway assigns URLs like https://your-service.up.railway.app
+# 5. Your app is live on the internet
+#
+# IMPORTANT: Railway supports multi-service deployments.
+# Each service below becomes its own Railway deployment.
+# They communicate via Railway's internal network.
+#
+# TO DEPLOY:
+# 1. Go to railway.app → New Project → Deploy from GitHub
+# 2. Select jeenalchandra-projects/spark-bayern
+# 3. Add environment variables in Railway dashboard (same as your .env)
+# 4. Railway auto-deploys on every push to main branch
+# =============================================================================
+
+[build]
+# Railway will auto-detect the Dockerfile in each service directory
+
+[deploy]
+# Restart automatically if the service crashes
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+# Health check — Railway uses this to verify the service is running
+# Each service exposes /health, so Railway knows if it's up
+healthcheckPath = "/health"
+healthcheckTimeout = 30
